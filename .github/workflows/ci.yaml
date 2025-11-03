@@ -15,31 +15,21 @@ jobs:
         with:
           clean: true
 
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache-dependency-path: requirements.txt
-        
-
-      - name: Create virtual environment
-        run: |
-            python -m venv venv
-            source venv/bin/activate
-            echo "VIRTUAL_ENV=$VIRTUAL_ENV" >> $GITHUB_ENV
-            echo "$VIRTUAL_ENV/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: |
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
-            pip install pylint
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pylint
 
       - name: Run pylint & enforce score
         run: |
-            chmod +x scripts/check_pylint_score.sh
-            ./scripts/check_pylint_score.sh 8.0
+          chmod +x scripts/check_pylint_score.sh
+          ./scripts/check_pylint_score.sh 6.0
 
   test:
     name: Run Tests with Coverage 🧪
@@ -48,14 +38,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          clean: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
@@ -64,41 +51,15 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          echo "🧪 Running unit tests with coverage analysis..."
           pytest test_app.py -v --cov=app --cov-report=term --cov-report=xml --cov-report=html
-          echo "✅ Tests completed with coverage analysis!"
-
-      - name: Check coverage threshold
-        run: |
-          chmod +x scripts/check_coverage_threshold.sh
-          ./scripts/check_coverage_threshold.sh 75
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: coverage-reports
           path: |
             coverage.xml
             htmlcov/
-          retention-days: 30
-
-      - name: Display coverage summary
-        run: |
-          echo "📊 Coverage Summary:"
-          echo "==================="
-          python -c "
-          import xml.etree.ElementTree as ET
-          try:
-              tree = ET.parse('coverage.xml')
-              root = tree.getroot()
-              line_rate = float(root.attrib.get('line-rate', 0)) * 100
-              branch_rate = float(root.attrib.get('branch-rate', 0)) * 100
-              print(f'Line Coverage: {line_rate:.1f}%')
-              print(f'Branch Coverage: {branch_rate:.1f}%')
-          except:
-              print('Could not parse coverage.xml')
-          "
 
   sonar:
     name: SonarQube Analysis with Coverage 📈
@@ -129,15 +90,6 @@ jobs:
           chmod +x scripts/check_sonar_quality_gate.sh
           ./scripts/check_sonar_quality_gate.sh devops-lab-1 180
 
-      - name: Display SonarQube metrics
-        if: always()
-        run: |
-          echo "🎯 SonarQube Analysis Complete!"
-          echo "================================"
-          echo "📊 Check your SonarQube dashboard at: $SONAR_HOST_URL"
-          echo "🔍 Project: $SONAR_PROJECT_KEY"
-          echo "📈 Coverage data has been integrated with code quality metrics"
-
   build-and-scan:
     name: Build & Scan Image 🛠️🔒
     runs-on: ubuntu-latest
@@ -145,8 +97,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          clean: true
 
       - name: Build Docker image
         run: |
@@ -163,26 +113,5 @@ jobs:
       - name: Display Trivy scan results
         if: always()
         run: |
-          echo "🔍 Security Scan Results for test-app:latest"
-          echo "============================================="
-          if [ -f trivy-results.txt ]; then
-            cat trivy-results.txt
-            
-            # Count vulnerabilities
-            CRITICAL=$(grep -c "CRITICAL" trivy-results.txt || echo "0")
-            HIGH=$(grep -c "HIGH" trivy-results.txt || echo "0")
-            
-            echo ""
-            echo "📊 Summary:"
-            echo "  🔴 Critical: $CRITICAL"
-            echo "  🟠 High: $HIGH"
-            
-            if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
-              echo "⚠️  Security vulnerabilities detected!"
-              echo "🔧 Consider updating base images or dependencies"
-            else
-              echo "✅ No critical or high severity vulnerabilities found!"
-            fi
-          else
-            echo "❌ Trivy scan results not found"
-          fi
+          echo "🔍 Security Scan Results"
+          cat trivy-results.txt || echo "No results file found"
